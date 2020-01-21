@@ -132,27 +132,27 @@ type LexState struct {
 }]]--
 
 function isNewLine(b)
-	return b == '\r' || b == '\n'
+	return b == '\r' or b == '\n'
 end
 
 function isNumber(b)
-	return (b >= '0' && b <= '9') || b == '-'
+	return (b >= '0' and b <= '9') or b == '-'
 end
 
 function isHexNumber(b)
-	return (b >= 'a' && b <= 'f') || (b >= 'A' && b <= 'F')
+	return (b >= 'a' and b <= 'f') or (b >= 'A' and b <= 'F')
 end
 
 function isLetter(b)
-	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || b == '_'
+	return (b >= 'a' and b <= 'z') or (b >= 'A' and b <= 'Z') or b == '_'
 end
 
 function isType(t)
-	return t > tkDummyTypeBegin && t < tkDummyTypeEnd
+	return t > tkDummyTypeBegin and t < tkDummyTypeEnd
 end
 
 function isNumberType(t)
-	if t == tkTInt || t == tkTBool|| t == tkTShort|| t == tkTByte|| t == tkTLong|| t == tkTFloat|| t == tkTDouble then
+	if t == tkTInt or t == tkTBool or  t == tkTShort or  t == tkTByte or  t == tkTLong or  t == tkTFloat or  t == tkTDouble then
 		return true
 	end
 
@@ -169,7 +169,7 @@ end
 function LexState:incLine()
 	local old = self.current
 	self:next() -- skip '\n' or '\r'
-	if isNewLine(self.current) && self.current != old then
+	if isNewLine(self.current) and self.current ~= old then
 		self:next() -- skip '\n\r' or '\r\n'
 	end
 	self.linenumber = self.linenumber + 1
@@ -179,14 +179,15 @@ function LexState:readNumber()
 	local hasDot = false
 	local isHex = false
 	repeat
-	    if isNumber(self.current) || self.current == '.' || self.current == 'x' || self.current == 'X' || (isHex && isHexNumber(self.current)) then
+	    if isNumber(self.current)  or  self.current == '.'  or  self.current == 'x'  or  self.current == 'X'  or  (isHex and isHexNumber(self.current)) then
 			if self.current == '.' then
 				hasDot = true
-			elseif self.current == 'x' || self.current == 'X' then
+			elseif self.current == 'x'  or  self.current == 'X' then
 				isHex = true
 			end
 			self.tokenBuff = self.tokenBuff .. self.current
-		self:next()
+		    self:next()
+        end
 	until true
 	local sem = {S = self.tokenBuff}
 	if hasDot then
@@ -194,10 +195,10 @@ function LexState:readNumber()
 		if sem.F == nil then
 			self:lexErr(err.Error())
 		end
-		return "tkFloat", sem
+		return tkFloat, sem
 	end
 	sem.I = tonumber(sem.S)
-	return "tkInteger", sem
+	return tkInteger, sem
 end
 
 function LexState:readIdent()
@@ -205,8 +206,8 @@ function LexState:readIdent()
 	local maohao = 0
 
     -- Point number processing namespace
-	while isLetter(self.current) || isNumber(self.current) || self.current == ':' do
-		if isNumber(self.current) && last == ':' then
+	while isLetter(self.current)  or  isNumber(self.current)  or  self.current == ':' do
+		if isNumber(self.current) and last == ':' then
 			self:lexErr("the identification is illegal.")
 		end
 		last = self.current
@@ -222,12 +223,12 @@ function LexState:readIdent()
 
 	local sem = {S = self.tokenBuff}
 
-	for i = tkDummyKeywordBegin + 1,tkDummyKeywordEnd then
+	for i = tkDummyKeywordBegin + 1,tkDummyKeywordEnd do 
 		if TokenMap[i] == sem.S then
 			return i, nil
 		end
 	end
-	for i = tkDummyTypeBegin + 1,i < tkDummyTypeEnd then
+	for i = tkDummyTypeBegin + 1,i < tkDummyTypeEnd do
 		if TokenMap[i] == sem.S then
 			return i, nil
 		end
@@ -247,13 +248,13 @@ function LexState:readSharp()
 	end
 
 	return tkInclude, nil
-}
+end
 
 function LexState:readString()
 	self:next()
 	while true do
 		if self.current == EOS then
-			self:lexErr(`no match "`)
+			self:lexErr("no match")
 		elseif self.current == '"' then
 			self:next()
 			break
@@ -272,7 +273,7 @@ function LexState:readLongComment()
 		if self.current == 0 then
 			self:lexErr("respect */")
 			return
-		elseif self.current == '\n' || self.current == '\r' then
+		elseif self.current == '\n'  or  self.current == '\r' then
 			self:incLine()
 		elseif  self.current == '*' then
 			self:next()
@@ -310,14 +311,14 @@ function LexState:llex()
 		local c = self.current
 		if c == EOS then
 			return tkEos, nil
-		elseif c ==' ' || c == '\t' || c == '\f'|| c == '\v' then
+		elseif c ==' '  or  c == '\t'  or  c == '\f' or  c == '\v' then
 			self:next()
-		elseif c == '\n' || c == '\r' then
+		elseif c == '\n'  or  c == '\r' then
 			self:incLine()
 		elseif c == '/' then -- Comment processing
 			self:next()
 			if self.current == '/' then
-				while !isNewLine(self.current) && self.current != EOS do
+				while not isNewLine(self.current) and self.current ~= EOS do
 					self:next()
 				end
 			elseif self.current == '*' then
