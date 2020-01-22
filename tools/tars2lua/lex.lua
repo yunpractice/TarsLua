@@ -1,106 +1,60 @@
-local EOS = 0
-
-local tkEos = 0
-local tkBracel  = 1  -- {
-local tkBracer  = 2  -- }
-local tkSemi    = 3  -- ;
-local tkEq      = 4  -- =
-local tkShl     = 5  -- <
-local tkShr     = 6  -- >
-local tkComma   = 7  -- ,
-local tkPtl     = 8  -- (
-local tkPtr     = 9  -- )
-local tkSquarel = 10 -- [
-local tkSquarer = 11 -- ]
-local tkInclude = 12 -- #include
- 
-local tkDummyKeywordBegin = 13
--- keyword
-local tkModule = 14
-local tkEnum = 15
-local tkStruct = 16
-local tkInterface = 17
-local tkRequire = 18
-local tkOptional = 19
-local tkConst = 20
-local tkUnsigned = 21
-local tkVoid = 22
-local tkOut = 23
-local tkKey = 24
-local tkTrue = 25
-local tkFalse = 26
-local tkDummyKeywordEnd = 27
- 
-local tkDummyTypeBegin = 28
--- type
-local tkTInt = 29
-local tkTBool = 30
-local tkTShort = 31
-local tkTByte = 32
-local tkTLong = 33
-local tkTFloat = 34
-local tkTDouble = 35
-local tkTString = 36
-local tkTVector = 37
-local tkTMap = 38
-local tkDummyTypeEnd = 39
- 
-local tkName  = 40-- variable name
--- value
-local tkString = 41
-local tkInteger = 42
-local tkFloat = 43
+local EOS = "\0"
 
 -- TokenMap record token  value.
 local TokenMap = {
-	[tkEos] = "<eos>",
+	tkEos = "<eos>",
 
-	[tkBracel] =  "{",
-	[tkBracer] =  "}",
-	[tkSemi] =    ";",
-	[tkEq] =      "=",
-	[tkShl] =     "<",
-	[tkShr] =     ">",
-	[tkComma] =   ",",
-	[tkPtl] =     "(",
-	[tkPtr] =     ")",
-	[tkSquarel] = "[",
-	[tkSquarer] = "]",
-	[tkInclude] = "#include",
+	tkBracel =  "{",
+	tkBracer =  "}",
+	tkSemi =    ";",
+	tkEq =      "=",
+	tkShl =     "<",
+	tkShr =     ">",
+	tkComma =   ",",
+	tkPtl =     "(",
+	tkPtr =     ")",
+	tkSquarel = "[",
+	tkSquarer = "]",
+	tkInclude = "#include",
 
 	-- keyword
-	[tkModule] =    "module",
-	[tkEnum] =      "enum",
-	[tkStruct] =    "struct",
-	[tkInterface] = "interface",
-	[tkRequire] =   "require",
-	[tkOptional] =  "optional",
-	[tkConst] =     "const",
-	[tkUnsigned] =  "unsigned",
-	[tkVoid] =      "void",
-	[tkOut] =       "out",
-	[tkKey] =       "key",
-	[tkTrue] =      "true",
-	[tkFalse] =     "false",
+	tkModule =    "module",
+	tkEnum =      "enum",
+	tkStruct =    "struct",
+	tkInterface = "interface",
+	tkRequire =   "require",
+	tkOptional =  "optional",
+	tkConst =     "const",
+	tkUnsigned =  "unsigned",
+	tkVoid =      "void",
+	tkOut =       "out",
+	tkKey =       "key",
+	tkTrue =      "true",
+	tkFalse =     "false",
 
 	-- type
-	[tkTInt] =    "int",
-	[tkTBool] =   "bool",
-	[tkTShort] =  "short",
-	[tkTByte] =   "byte",
-	[tkTLong] =   "long",
-	[tkTFloat] =  "float",
-	[tkTDouble] = "double",
-	[tkTString] = "string",
-	[tkTVector] = "vector",
-	[tkTMap] =    "map",
+	tkTInt =    "int",
+	tkTBool =   "bool",
+	tkTShort =  "short",
+	tkTByte =   "byte",
+	tkTLong =   "long",
+	tkTFloat =  "float",
+	tkTDouble = "double",
+	tkTString = "string",
+	tkTVector = "vector",
+	tkTMap =    "map",
 
-	[tkName] = "<name>",
+	tkName = "<name>",
 	-- value
-	[tkString] =  "<string>",
-	[tkInteger] = "<INTEGER>",
-	[tkFloat] =   "<FLOAT>"
+	tkString =  "<string>",
+	tkInteger = "<INTEGER>",
+	tkFloat =   "<FLOAT>"
 }
+
+local str2token = {}
+for k,v in pairs(TokenMap) do
+    str2token[v] = k
+end
 
 --[[
 //SemInfo is struct.
@@ -163,7 +117,7 @@ local LexState = {}
 
 function LexState:lexErr(err)
 	local line = tostring(self.linenumber)
-	error(self.source + ": " + line + ".    " + err)
+	error(self.source .. ": " .. line .. ".    " .. err)
 end
 
 function LexState:incLine()
@@ -189,16 +143,16 @@ function LexState:readNumber()
 		    self:next()
         end
 	until true
-	local sem = {S = self.tokenBuff}
+	local sem = {s = self.tokenBuff}
 	if hasDot then
-		sem.F = tonumber(sem.S)
-		if sem.F == nil then
-			self:lexErr(err.Error())
+		sem.f = tonumber(sem.s)
+		if not sem.f then
+			self:lexErr(sem.s .. " is not float")
 		end
-		return tkFloat, sem
+		return "tkFloat", sem
 	end
-	sem.I = tonumber(sem.S)
-	return tkInteger, sem
+	sem.i = tonumber(sem.s)
+	return "tkInteger", sem
 end
 
 function LexState:readIdent()
@@ -213,71 +167,62 @@ function LexState:readIdent()
 		last = self.current
 		if last == ":" then
 		    maohao = maohao + 1
-			if maohao > 3 then
+			if maohao >= 3 then
 				self:lexErr("namespace qualifier:is illegal")
 			end
 		end
-		self.tokenBuff = self.tokenBuff + self.current
+		self.tokenBuff = self.tokenBuff .. self.current
 		self:next()
 	end
 
-	local sem = {S = self.tokenBuff}
+    local tk = str2token[self.tokenBuff]
+    if tk then
+        return tk,nil
+    end
 
-	for i = tkDummyKeywordBegin + 1,tkDummyKeywordEnd do 
-		if TokenMap[i] == sem.S then
-			return i, nil
-		end
-	end
-	for i = tkDummyTypeBegin + 1,i < tkDummyTypeEnd do
-		if TokenMap[i] == sem.S then
-			return i, nil
-		end
-	end
-
-	return tkName, sem
+	return "tkName", {s = self.tokenBuff}
 end
 
 function LexState:readSharp()
 	self:next()
 	while isLetter(self.current) do
-		self.tokenBuff = self.tokenBuff + elf.current
+		self.tokenBuff = self.tokenBuff .. self.current
 		self:next()
 	end
 	if self.tokenBuff ~= "include" then
 		self:lexErr("not #include")
 	end
 
-	return tkInclude, nil
+	return "tkInclude", nil
 end
 
 function LexState:readString()
 	self:next()
 	while true do
-		if self.current == EOS then
+		if self.current == "\0" then
 			self:lexErr("no match")
 		elseif self.current == '"' then
 			self:next()
 			break
 		else
-			self.tokenBuff.WriteByte(self.current)
+			self.tokenBuff = self.tokenBuff .. self.current
 			self:next()
 		end
 	end
-	sem.S = self.tokenBuff.String()
 
-	return tkString, sem
+	return "tkString", {s = self.tokenBuff}
 end
 
 function LexState:readLongComment()
 	while true do
-		if self.current == 0 then
+		if self.current == "\0" then
 			self:lexErr("respect */")
 			return
 		elseif self.current == '\n'  or  self.current == '\r' then
 			self:incLine()
 		elseif  self.current == '*' then
 			self:next()
-			if self.current == 0 then
+			if self.current == "\0" then
 				return
 			elseif self.current == '/' then
 				self:next()
@@ -290,7 +235,8 @@ function LexState:readLongComment()
 end
 
 function LexState:next()
-	self.current = self.buff[self.current_index]
+    self.token_index = self.token_index + 1
+	self.current = string.sub(self.buff,self.token_index,self.token_index)
 end
 
 function LexState:llexDefault()
@@ -298,17 +244,18 @@ function LexState:llexDefault()
 		return self:readNumber()
 	end
 	if isLetter(self.current) then
-		return self.readIdent()
+		return self:readIdent()
 	end
 
-	self:lexErr("unrecognized characters, " + tostring(self.current))
+	self:lexErr("line:" ..self.linenumber .. ", unrecognized characters: " .. self.current)
 	return '0', nil
 end
 
 -- Do lexical analysis.
 function LexState:llex()
-	while true do
-		local c = self.current
+    local c = self.current
+	while c and #c > 0 do
+	    self.tokenBuff = ""
 		if c == EOS then
 			return tkEos, nil
 		elseif c ==' '  or  c == '\t'  or  c == '\f' or  c == '\v' then
@@ -329,56 +276,63 @@ function LexState:llex()
 			end
 		elseif c == '{' then
 			self:next()
-			return tkBracel, nil
+			return "tkBracel", nil
 		elseif c == '}' then
 			self:next()
-			return tkBracer, nil
+			return "tkBracer", nil
 		elseif c == ';' then
 			self:next()
-			return tkSemi, nil
+			return "tkSemi", nil
 		elseif c == '=' then
 			self:next()
-			return tkEq, nil
+			return "tkEq", nil
 		elseif c == '<' then
 			self:next()
-			return tkShl, nil
+			return "tkShl", nil
 		elseif c == '>' then
 			self:next()
-			return tkShr, nil
+			return "tkShr", nil
 		elseif c == ',' then
 			self:next()
-			return tkComma, nil
+			return "tkComma", nil
 		elseif c == '(' then
 			self:next()
-			return tkPtl, nil
-		elseif c == "')'" then
+			return "tkPtl", nil
+		elseif c == ')' then
 			self:next()
-			return tkPtr, nil
+			return "tkPtr", nil
 		elseif c == '[' then
 			self:next()
-			return tkSquarel, nil
+			return "tkSquarel", nil
 		elseif c == ']' then
 			self:next()
-			return tkSquarer, nil
+			return "tkSquarer", nil
 		elseif c == '"' then
-			return self.readString()
+			return self:readString()
 		elseif c == '#' then
 			return self:readSharp()
 		else
 			return self:llexDefault()
 		end
+
+		c = self.current
 	end
 end
 
 -- NextToken return token after lexical analysis.
 function LexState:NextToken()
-	local T, S = self:llex()
+	local t, s = self:llex()
+	if not t then
+	    return
+	end
 	return {
-	    T = T,
-		S = S,
-		Line = self.linenumber
+	    t = t,    -- 类型
+		s = s,    -- 内容{i,f,s}
+		line = self.linenumber
 	}
 end
+
+LexState.__index = LexState
 
 local M = {}
 
@@ -389,7 +343,8 @@ function M.NewLexState(source, buff)
 		linenumber = 1,
 		source = source,
 		buff = buff,
-		tokenBuff = ""
+		tokenBuff = "",
+		token_index = 0
 	},LexState)
 end
 

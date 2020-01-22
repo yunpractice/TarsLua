@@ -1,0 +1,9 @@
+module test
+{
+    interface Test
+    {
+        void hello();
+
+        string ping(string str);
+    }
+}
